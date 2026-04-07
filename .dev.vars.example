@@ -5,4 +5,4 @@ JWT_SECRET=sua_string_secreta_aleatoria_com_64_ou_mais_caracteres
 GOOGLE_CLIENT_ID=seu_google_client_id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=seu_google_client_secret
 RESEND_API_KEY=re_sua_chave_resend
-OPENAI_API_KEY=sk-sua_chave_openai
+GEMINI_API_KEY=sua_chave_gemini_aqui

@@ -37,40 +37,42 @@ Edição comemorativa: ${editionStr}
 
 Responda APENAS com a descrição, sem prefixos.`
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Usando Google Gemini Flash (gratuito: 1M tokens/dia)
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${c.env.GEMINI_API_KEY}`
+
+    const response = await fetch(geminiUrl, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${c.env.OPENAI_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
+        contents: [
           {
-            role: 'user',
-            content: prompt,
+            parts: [{ text: prompt }],
           },
         ],
-        max_tokens: 150,
-        temperature: 0.7,
+        generationConfig: {
+          maxOutputTokens: 150,
+          temperature: 0.7,
+        },
       }),
     })
 
     if (!response.ok) {
       const errorBody = await response.text()
-      console.error('[ai/describe] OpenAI error:', response.status, errorBody)
+      console.error('[ai/describe] Gemini error:', response.status, errorBody)
       return c.json({ error: 'Erro ao gerar descrição. Tente novamente.' }, 502)
     }
 
     const data = await response.json<{
-      choices: Array<{
-        message: {
-          content: string
+      candidates: Array<{
+        content: {
+          parts: Array<{ text: string }>
         }
       }>
     }>()
 
-    const description = data.choices?.[0]?.message?.content?.trim()
+    const description = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
 
     if (!description) {
       return c.json({ error: 'Não foi possível gerar uma descrição' }, 502)
