@@ -22,7 +22,7 @@ users.get('/me', authMiddleware, async (c) => {
 
     if (!user) return c.json({ error: 'Usuário não encontrado' }, 404)
 
-    return c.json({ user })
+    return c.json(user)
   } catch (err) {
     console.error('[users/me GET]', err)
     return c.json({ error: 'Erro ao buscar perfil' }, 500)
@@ -74,7 +74,7 @@ users.put('/me', authMiddleware, async (c) => {
       .bind(authUser.id)
       .first()
 
-    return c.json({ user: updated })
+    return c.json(updated)
   } catch (err) {
     console.error('[users/me PUT]', err)
     return c.json({ error: 'Erro ao atualizar perfil' }, 500)

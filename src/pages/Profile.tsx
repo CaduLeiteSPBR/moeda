@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Camera, Loader2, Save, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
@@ -20,9 +20,22 @@ export default function Profile() {
   const [profileForm, setProfileForm] = useState({
     name: user?.name || '',
     city: user?.city || '',
-    birth_date: '',
-    whatsapp: '',
+    birth_date: (user as { birth_date?: string })?.birth_date || '',
+    whatsapp: user?.whatsapp || '',
   })
+
+  // Busca perfil completo ao montar (birth_date e whatsapp podem não estar no store)
+  useEffect(() => {
+    api.users.me().then((fullUser) => {
+      updateUser(fullUser)
+      setProfileForm({
+        name: fullUser.name || '',
+        city: fullUser.city || '',
+        birth_date: (fullUser as { birth_date?: string })?.birth_date || '',
+        whatsapp: fullUser.whatsapp || '',
+      })
+    }).catch(() => {})
+  }, [updateUser])
   const [passwordForm, setPasswordForm] = useState({
     current_password: '',
     new_password: '',
