@@ -54,7 +54,7 @@ upload.post('/upload', authMiddleware, async (c) => {
 
     const url = await uploadFile(c.env.R2, key, arrayBuffer, contentType)
 
-    return c.json({ url }, 201)
+    return c.json({ key, url }, 201)
   } catch (err) {
     console.error('[upload/POST]', err)
     return c.json({ error: 'Erro ao fazer upload da imagem' }, 500)
