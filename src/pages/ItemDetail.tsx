@@ -48,8 +48,8 @@ export default function ItemDetail() {
 
   const isOwner = user?.id === item?.user_id
 
-  const frontUrl = getImageUrl(item?.front_image_key)
-  const backUrl = getImageUrl(item?.back_image_key)
+  const frontUrl = getImageUrl(item?.front_image_url)
+  const backUrl = getImageUrl(item?.back_image_url)
   const currentUrl = showBack ? backUrl : frontUrl
 
   const handleDelete = async () => {

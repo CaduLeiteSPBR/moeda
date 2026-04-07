@@ -33,8 +33,8 @@ export default function ItemCard({ item, isOwner = false, onDeleted, onUpdated }
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
-  const frontUrl = getImageUrl(item.front_image_key)
-  const backUrl = getImageUrl(item.back_image_key)
+  const frontUrl = getImageUrl(item.front_image_url)
+  const backUrl = getImageUrl(item.back_image_url)
 
   const handleFlip = () => {
     if (!backUrl) return

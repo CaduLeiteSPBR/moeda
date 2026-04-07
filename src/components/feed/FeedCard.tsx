@@ -14,7 +14,7 @@ interface FeedCardProps {
 
 export default function FeedCard({ item, index = 0 }: FeedCardProps) {
   const navigate = useNavigate()
-  const imageUrl = getImageUrl(item.front_image_key)
+  const imageUrl = getImageUrl(item.front_image_url)
 
   return (
     <motion.div

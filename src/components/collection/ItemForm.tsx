@@ -51,8 +51,8 @@ export default function ItemForm({ item, onSuccess, onCancel }: ItemFormProps) {
     available_for_trade: item?.available_for_trade ?? false,
     commemorative_edition: item?.commemorative_edition || '',
     description: item?.description || '',
-    front_image_key: item?.front_image_key || null as string | null,
-    back_image_key: item?.back_image_key || null as string | null,
+    front_image_url: item?.front_image_url || null as string | null,
+    back_image_url: item?.back_image_url || null as string | null,
   })
   const [isLoading, setIsLoading] = useState(false)
   const [isGeneratingDesc, setIsGeneratingDesc] = useState(false)
@@ -103,8 +103,8 @@ export default function ItemForm({ item, onSuccess, onCancel }: ItemFormProps) {
         available_for_trade: form.available_for_trade,
         commemorative_edition: form.commemorative_edition || undefined,
         description: form.description || undefined,
-        front_image_key: form.front_image_key || undefined,
-        back_image_key: form.back_image_key || undefined,
+        front_image_url: form.front_image_url || undefined,
+        back_image_url: form.back_image_url || undefined,
       }
 
       let result: Item
@@ -271,13 +271,13 @@ export default function ItemForm({ item, onSuccess, onCancel }: ItemFormProps) {
       <div className="grid grid-cols-2 gap-3">
         <ImageUpload
           label="Frente"
-          value={form.front_image_key}
-          onChange={(key) => handleChange('front_image_key', key)}
+          value={form.front_image_url}
+          onChange={(key) => handleChange('front_image_url', key)}
         />
         <ImageUpload
           label="Verso"
-          value={form.back_image_key}
-          onChange={(key) => handleChange('back_image_key', key)}
+          value={form.back_image_url}
+          onChange={(key) => handleChange('back_image_url', key)}
         />
       </div>
 

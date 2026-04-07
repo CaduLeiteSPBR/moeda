@@ -31,8 +31,8 @@ export interface Item {
   available_for_trade: boolean
   commemorative_edition: string | null
   description: string | null
-  front_image_key: string | null
-  back_image_key: string | null
+  front_image_url: string | null
+  back_image_url: string | null
   created_at: string | number
   updated_at?: string | number
   user?: User
@@ -86,8 +86,8 @@ export interface ItemFormData {
   available_for_trade?: boolean
   commemorative_edition?: string
   description?: string
-  front_image_key?: string
-  back_image_key?: string
+  front_image_url?: string
+  back_image_url?: string
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -248,21 +248,21 @@ export const api = {
     getById: (id: string) =>
       fetch(`${BASE_URL}/items/${id}`, {
         headers: authHeaders(),
-      }).then(handleResponse<Item>),
+      }).then(handleResponse<{ item: Item }>).then((r) => r.item),
 
     create: (data: ItemFormData) =>
       fetch(`${BASE_URL}/items`, {
         method: 'POST',
         headers: authHeaders(),
         body: JSON.stringify(data),
-      }).then(handleResponse<Item>),
+      }).then(handleResponse<{ item: Item }>).then((r) => r.item),
 
     update: (id: string, data: Partial<ItemFormData>) =>
       fetch(`${BASE_URL}/items/${id}`, {
         method: 'PUT',
         headers: authHeaders(),
         body: JSON.stringify(data),
-      }).then(handleResponse<Item>),
+      }).then(handleResponse<{ item: Item }>).then((r) => r.item),
 
     delete: (id: string) =>
       fetch(`${BASE_URL}/items/${id}`, {
