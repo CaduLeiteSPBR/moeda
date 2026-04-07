@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm --version)",
+      "Bash(git --version)",
+      "Bash(npx tsc:*)",
+      "Bash(./node_modules/.bin/tsc --noEmit)",
+      "Bash(npm install:*)",
+      "Bash(./node_modules/.bin/tsc -p tsconfig.json --noEmit --skipLibCheck)",
+      "Bash(./node_modules/.bin/tsc --noEmit --skipLibCheck)",
+      "Bash(./node_modules/.bin/vite build:*)",
+      "Bash(npm run:*)"
+    ]
+  }
+}
