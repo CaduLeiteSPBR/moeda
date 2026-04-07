@@ -54,10 +54,12 @@ admin.get('/users', async (c) => {
 
     return c.json({
       data: rows.results,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
     })
   } catch (err) {
     console.error('[admin/users GET]', err)

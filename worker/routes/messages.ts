@@ -57,10 +57,12 @@ messages.get('/sent', authMiddleware, async (c) => {
 
     return c.json({
       data: rows.results,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
     })
   } catch (err) {
     console.error('[messages/sent]', err)
@@ -97,10 +99,12 @@ messages.get('/admin/all', authMiddleware, adminMiddleware, async (c) => {
 
     return c.json({
       data: rows.results,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
     })
   } catch (err) {
     console.error('[messages/admin/all]', err)
@@ -142,10 +146,12 @@ messages.get('/', authMiddleware, async (c) => {
 
     return c.json({
       data: rows.results,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
     })
   } catch (err) {
     console.error('[messages/ GET]', err)

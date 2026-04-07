@@ -162,10 +162,12 @@ users.get('/search', optionalAuthMiddleware, async (c) => {
 
     return c.json({
       data: rows.results,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
     })
   } catch (err) {
     console.error('[users/search]', err)
@@ -298,10 +300,12 @@ users.get('/:id/followers', optionalAuthMiddleware, async (c) => {
 
     return c.json({
       data: rows.results,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
     })
   } catch (err) {
     console.error('[users/:id/followers]', err)
@@ -339,10 +343,12 @@ users.get('/:id/following', optionalAuthMiddleware, async (c) => {
 
     return c.json({
       data: rows.results,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
     })
   } catch (err) {
     console.error('[users/:id/following]', err)
