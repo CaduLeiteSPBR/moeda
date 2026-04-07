@@ -61,7 +61,7 @@ Responda APENAS com a descrição, sem prefixos.`
     if (!response.ok) {
       const errorBody = await response.text()
       console.error('[ai/describe] Gemini error:', response.status, errorBody)
-      return c.json({ error: 'Erro ao gerar descrição. Tente novamente.' }, 502)
+      return c.json({ error: `Gemini ${response.status}: ${errorBody}` }, 502)
     }
 
     const data = await response.json<{
