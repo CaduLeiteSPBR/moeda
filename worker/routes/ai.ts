@@ -37,8 +37,8 @@ Edição comemorativa: ${editionStr}
 
 Responda APENAS com a descrição, sem prefixos.`
 
-    // Usando Google Gemini Flash (gratuito: 1M tokens/dia)
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${c.env.GEMINI_API_KEY}`
+    // Usando Google Gemini 2.5 Pro (conta paga)
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${c.env.GEMINI_API_KEY}`
 
     const response = await fetch(geminiUrl, {
       method: 'POST',
