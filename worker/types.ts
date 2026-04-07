@@ -1,11 +1,11 @@
 export type Env = {
   DB: D1Database
   R2: R2Bucket
+  AI: Ai
   JWT_SECRET: string
   GOOGLE_CLIENT_ID: string
   GOOGLE_CLIENT_SECRET: string
   RESEND_API_KEY: string
-  GEMINI_API_KEY: string
   FRONTEND_URL: string
   GOOGLE_REDIRECT_URI: string
   ADMIN_EMAIL: string
