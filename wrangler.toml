@@ -9,7 +9,7 @@ command = "npm run build"
 [[d1_databases]]
 binding = "DB"
 database_name = "coinhub-db"
-database_id = "PREENCHER_APOS_CRIAR_NO_CLOUDFLARE"
+database_id = "a6108396-92cd-457a-aa86-dbaf26473dd4"
 migrations_dir = "migrations"
 
 [[r2_buckets]]
@@ -30,7 +30,7 @@ ADMIN_EMAIL = "caduleitenet@gmail.com"
 [[env.development.d1_databases]]
 binding = "DB"
 database_name = "coinhub-db"
-database_id = "PREENCHER_APOS_CRIAR_NO_CLOUDFLARE"
+database_id = "a6108396-92cd-457a-aa86-dbaf26473dd4"
 migrations_dir = "migrations"
 
 [[env.development.r2_buckets]]
