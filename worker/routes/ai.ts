@@ -37,8 +37,8 @@ Edição comemorativa: ${editionStr}
 
 Responda APENAS com a descrição, sem prefixos.`
 
-    // Usando Google Gemini 2.5 Pro (conta paga)
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${c.env.GEMINI_API_KEY}`
+    // Usando Google Gemini 2.0 Flash (gratuito: 1M tokens/dia)
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${c.env.GEMINI_API_KEY}`
 
     const response = await fetch(geminiUrl, {
       method: 'POST',
@@ -61,7 +61,7 @@ Responda APENAS com a descrição, sem prefixos.`
     if (!response.ok) {
       const errorBody = await response.text()
       console.error('[ai/describe] Gemini error:', response.status, errorBody)
-      return c.json({ error: `Gemini ${response.status}: ${errorBody}` }, 502)
+      return c.json({ error: 'Erro ao gerar descrição. Tente novamente.' }, 502)
     }
 
     const data = await response.json<{
