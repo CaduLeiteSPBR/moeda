@@ -248,26 +248,26 @@ export default function ItemDetail() {
       )}
 
       {/* Proprietário */}
-      {item.user && (
+      {item.owner_name && (
         <div className="border border-border rounded-2xl p-4">
           <p className="text-xs text-muted-foreground mb-3 uppercase tracking-wide font-medium">Proprietário</p>
-          <Link to={`/users/${item.user.id}`} className="flex items-center gap-3">
+          <Link to={`/users/${item.user_id}`} className="flex items-center gap-3">
             <Avatar className="h-12 w-12">
-              <AvatarImage src={getImageUrl(item.user.avatar_url) ?? undefined} />
-              <AvatarFallback>{getInitials(item.user.name)}</AvatarFallback>
+              <AvatarImage src={getImageUrl(item.owner_avatar_url) ?? undefined} />
+              <AvatarFallback>{getInitials(item.owner_name)}</AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
-              <p className="font-semibold">{item.user.name}</p>
-              {item.user.city && (
+              <p className="font-semibold">{item.owner_name}</p>
+              {item.owner_city && (
                 <p className="text-sm text-muted-foreground flex items-center gap-1">
                   <MapPin className="h-3 w-3" />
-                  {item.user.city}
+                  {item.owner_city}
                 </p>
               )}
             </div>
           </Link>
           <Button variant="outline" size="sm" className="w-full mt-3" asChild>
-            <Link to={`/users/${item.user.id}/collection`}>
+            <Link to={`/users/${item.user_id}`}>
               Ver coleção completa
             </Link>
           </Button>
