@@ -4,11 +4,13 @@ import type { AppContext } from '../types'
 
 const ai = new Hono<AppContext>()
 
-const GEMINI_MODEL = 'gemini-2.5-pro'
-const GEMINI_URL = (apiKey: string) =>
-  `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`
+// Tenta o melhor modelo disponível com fallback automático
+const GEMINI_MODELS = ['gemini-2.5-pro', 'gemini-1.5-flash']
 
-// ─── Helper: chama a API do Gemini ────────────────────────────────────────────
+const GEMINI_URL = (model: string, apiKey: string) =>
+  `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
+
+// ─── Helper: chama a API do Gemini com fallback automático ────────────────────
 
 async function callGemini(
   apiKey: string,
@@ -16,26 +18,40 @@ async function callGemini(
   maxTokens = 256,
   temperature = 0.2,
 ): Promise<string> {
-  const res = await fetch(GEMINI_URL(apiKey), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts }],
-      generationConfig: { maxOutputTokens: maxTokens, temperature },
-    }),
-  })
+  let lastError = ''
 
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(`Gemini API error ${res.status}: ${err.slice(0, 200)}`)
+  for (const model of GEMINI_MODELS) {
+    const res = await fetch(GEMINI_URL(model, apiKey), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts }],
+        generationConfig: { maxOutputTokens: maxTokens, temperature },
+      }),
+    })
+
+    // 503 = sobrecarga temporária → tenta próximo modelo
+    if (res.status === 503 || res.status === 429) {
+      lastError = `Gemini API error ${res.status} on ${model}`
+      console.warn(`[ai] ${lastError}, trying fallback...`)
+      continue
+    }
+
+    if (!res.ok) {
+      const err = await res.text()
+      throw new Error(`Gemini API error ${res.status}: ${err.slice(0, 200)}`)
+    }
+
+    const json = await res.json() as {
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
+    }
+
+    const text = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? ''
+    console.log(`[ai] responded by ${model}`)
+    return text
   }
 
-  const json = await res.json() as {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
-  }
-
-  const text = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? ''
-  return text
+  throw new Error(`Todos os modelos indisponíveis. ${lastError}`)
 }
 
 // ─── POST /describe ───────────────────────────────────────────────────────────
