@@ -89,10 +89,10 @@ ai.post('/identify', authMiddleware, async (c) => {
     const prompt = `You are a numismatic expert. Analyze this image of a coin or banknote and return ONLY a valid JSON object with no markdown, no extra text:
 {"type":"coin or note","country":"country name in Portuguese","year":number or null,"denomination":numeric value or null,"currency":"ISO currency code (BRL/USD/EUR/GBP/ARS etc) or null","commemorative_edition":"description if commemorative edition or null"}`
 
-    // Formato correto para modelos de visão do Cloudflare Workers AI
+    // Modelo de visão sem exigência de aceite de termos
     const aiResponse = await (c.env.AI as unknown as {
       run: (model: string, input: unknown) => Promise<unknown>
-    }).run('@cf/meta/llama-3.2-11b-vision-instruct', {
+    }).run('@cf/llava-hf/llava-1.5-7b-hf', {
       image: imageBytes,
       prompt,
       max_tokens: 300,
