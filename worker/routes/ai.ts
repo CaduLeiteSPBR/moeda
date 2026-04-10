@@ -17,7 +17,7 @@ async function callGemini(
   parts: Array<{ text: string } | { inline_data: { mime_type: string; data: string } }>,
   options: { maxTokens?: number; temperature?: number; jsonMode?: boolean } = {},
 ): Promise<string> {
-  const { maxTokens = 512, temperature = 0.2, jsonMode = false } = options
+  const { maxTokens, temperature = 0.2, jsonMode = false } = options
   let lastError = ''
 
   for (const model of GEMINI_MODELS) {
@@ -27,7 +27,7 @@ async function callGemini(
       body: JSON.stringify({
         contents: [{ parts }],
         generationConfig: {
-          maxOutputTokens: maxTokens,
+          ...(maxTokens !== undefined ? { maxOutputTokens: maxTokens } : {}),
           temperature,
           ...(jsonMode ? { responseMimeType: 'application/json' } : {}),
         },
@@ -84,7 +84,7 @@ Ano de emissão: ${body.year ?? 'Não informado'}
 Valor nominal: ${body.denomination ?? 'Não informado'} ${body.currency ?? ''}
 Edição comemorativa: ${isCommemorativa ? body.commemorative_edition : 'Não'}`
 
-    const description = await callGemini(c.env.GEMINI_API_KEY, [{ text: prompt }], { maxTokens: 1024, temperature: 0.4 })
+    const description = await callGemini(c.env.GEMINI_API_KEY, [{ text: prompt }], { temperature: 0.4 })
 
     if (!description) {
       return c.json({ error: 'Não foi possível gerar uma descrição' }, 502)
