@@ -5,7 +5,7 @@ import type { AppContext } from '../types'
 const ai = new Hono<AppContext>()
 
 // Tenta o melhor modelo disponível com fallback automático
-const GEMINI_MODELS = ['gemini-2.5-pro', 'gemini-1.5-flash']
+const GEMINI_MODELS = ['gemini-3-flash-preview', 'gemini-2.5-pro', 'gemini-1.5-flash']
 
 const GEMINI_URL = (model: string, apiKey: string) =>
   `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
