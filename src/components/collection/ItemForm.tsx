@@ -83,8 +83,9 @@ export default function ItemForm({ item, onSuccess, onCancel }: ItemFormProps) {
       setIdentified(true)
       toast({
         title: 'Item identificado!',
-        description: 'Revise e ajuste os campos se necessário.',
+        description: 'Verifique especialmente o valor e o ano — a IA pode errar números. Corrija se necessário.',
         variant: 'default',
+        duration: 7000,
       })
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : ''

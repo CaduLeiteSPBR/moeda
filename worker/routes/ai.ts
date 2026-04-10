@@ -91,8 +91,8 @@ ai.post('/identify', authMiddleware, async (c) => {
       run: (model: string, input: unknown) => Promise<unknown>
     }).run('@cf/llava-hf/llava-1.5-7b-hf', {
       image: imageBytes,
-      prompt: 'Describe this coin or banknote in detail. Include the country of origin, year, denomination value, currency name, and any commemorative text visible.',
-      max_tokens: 200,
+      prompt: 'Carefully examine this coin or banknote image. State: 1) Is it a coin or banknote? 2) What country issued it? 3) What is the EXACT denomination number printed on it (read carefully, e.g. 10, 20, 50, 100)? 4) What is the series year or print year visible? 5) What currency? 6) Any commemorative text? Be precise with numbers.',
+      max_tokens: 250,
     })
 
     const description = ((visionResponse as { description?: string; response?: string }).description
@@ -116,11 +116,18 @@ ai.post('/identify', authMiddleware, async (c) => {
         },
         {
           role: 'user',
-          content: `Com base nesta descrição de uma moeda ou cédula, retorne APENAS um JSON válido:
+          content: `Com base nesta descrição de uma moeda ou cédula, extraia os dados com MUITA atenção aos números. Retorne APENAS um JSON válido:
 Descrição: "${description}"
 
-JSON esperado (use null para campos não identificados):
-{"type":"coin ou note","country":"nome do país em português","year":número ou null,"denomination":número ou null,"currency":"código ISO (BRL/USD/EUR/GBP/ARS etc) ou null","commemorative_edition":"descrição da edição comemorativa ou null"}`,
+Regras importantes:
+- "denomination": use o número EXATO mencionado (ex: se disser "ten dollars" = 10, "twenty" = 20, nunca arredonde ou altere)
+- "year": use o ano da série/emissão mencionado (4 dígitos, ex: 2017)
+- "type": "coin" para moedas metálicas, "note" para cédulas/papel-moeda
+- "country": nome em português (ex: "Estados Unidos", "Brasil", "França")
+- "currency": código ISO de 3 letras (USD, BRL, EUR, GBP, etc.)
+
+JSON (null para campos não identificados):
+{"type":"coin ou note","country":"nome em português","year":número ou null,"denomination":número ou null,"currency":"código ISO ou null","commemorative_edition":"texto comemorativo ou null"}`,
         },
       ],
       max_tokens: 200,
