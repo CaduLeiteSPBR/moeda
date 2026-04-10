@@ -63,57 +63,28 @@ export default function ItemForm({ item, onSuccess, onCancel }: ItemFormProps) {
     setForm((prev) => ({ ...prev, [field]: value }))
   }
 
-  // ─── Identificar item pela imagem ─────────────────────────────────────────
+  // ─── Gerar descrição com IA ──────────────────────────────────────────────
+  // Aceita valores diretos para ser chamada logo após a identificação,
+  // antes que o React atualize o estado do formulário.
 
-  const handleIdentify = async () => {
-    if (!form.front_image_url) return
-    setIsIdentifying(true)
-    setIdentified(false)
-    try {
-      const result = await api.ai.identify(form.front_image_url)
-      setForm((prev) => ({
-        ...prev,
-        type: (result.type === 'coin' || result.type === 'note') ? result.type : prev.type,
-        country: result.country || prev.country,
-        year: result.year ? String(result.year) : prev.year,
-        denomination: result.denomination ? String(result.denomination) : prev.denomination,
-        currency: result.currency || prev.currency,
-        commemorative_edition: result.commemorative_edition || prev.commemorative_edition,
-      }))
-      setIdentified(true)
-      toast({
-        title: 'Item identificado!',
-        description: 'Verifique especialmente o valor e o ano — a IA pode errar números. Corrija se necessário.',
-        variant: 'default',
-        duration: 7000,
-      })
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : ''
-      // Se começa com "Identificado como:" o modelo viu a imagem mas não gerou JSON
-      const isPartial = msg.startsWith('Identificado como:')
-      toast({
-        title: isPartial ? 'Identificação parcial' : 'Não foi possível identificar',
-        description: msg || 'Tente com uma foto mais nítida ou preencha manualmente.',
-        variant: isPartial ? 'default' : 'destructive',
-        duration: 8000,
-      })
-    } finally {
-      setIsIdentifying(false)
-    }
-  }
-
-  // ─── Gerar descrição com IA ───────────────────────────────────────────────
-
-  const handleGenerateDescription = async () => {
+  const handleGenerateDescription = async (overrides?: {
+    type?: 'coin' | 'note'
+    country?: string
+    year?: string
+    denomination?: string
+    currency?: string
+    commemorative_edition?: string
+  }) => {
+    const values = overrides ? { ...form, ...overrides } : form
     setIsGeneratingDesc(true)
     try {
       const res = await api.ai.describe({
-        type: form.type,
-        country: form.country || undefined,
-        year: form.year ? parseInt(form.year) : undefined,
-        denomination: form.denomination ? parseFloat(form.denomination) : undefined,
-        currency: form.currency || undefined,
-        commemorative_edition: form.commemorative_edition || undefined,
+        type: values.type,
+        country: values.country || undefined,
+        year: values.year ? parseInt(values.year) : undefined,
+        denomination: values.denomination ? parseFloat(values.denomination) : undefined,
+        currency: values.currency || undefined,
+        commemorative_edition: values.commemorative_edition || undefined,
       })
       handleChange('description', res.description)
     } catch (err: unknown) {
@@ -124,6 +95,50 @@ export default function ItemForm({ item, onSuccess, onCancel }: ItemFormProps) {
       })
     } finally {
       setIsGeneratingDesc(false)
+    }
+  }
+
+  // ─── Identificar item pela imagem ─────────────────────────────────────────
+
+  const handleIdentify = async () => {
+    if (!form.front_image_url) return
+    setIsIdentifying(true)
+    setIdentified(false)
+    try {
+      const result = await api.ai.identify(form.front_image_url)
+
+      const identified = {
+        type: (result.type === 'coin' || result.type === 'note') ? result.type : form.type,
+        country: result.country || form.country,
+        year: result.year ? String(result.year) : form.year,
+        denomination: result.denomination ? String(result.denomination) : form.denomination,
+        currency: result.currency || form.currency,
+        commemorative_edition: result.commemorative_edition || form.commemorative_edition,
+      }
+
+      setForm((prev) => ({ ...prev, ...identified }))
+      setIdentified(true)
+
+      toast({
+        title: 'Item identificado! Gerando descrição...',
+        description: 'Verifique o valor e o ano antes de salvar.',
+        variant: 'default',
+        duration: 5000,
+      })
+
+      // Gera descrição automaticamente passando os valores identificados diretamente
+      await handleGenerateDescription(identified)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : ''
+      const isPartial = msg.startsWith('Identificado como:')
+      toast({
+        title: isPartial ? 'Identificação parcial' : 'Não foi possível identificar',
+        description: msg || 'Tente com uma foto mais nítida ou preencha manualmente.',
+        variant: isPartial ? 'default' : 'destructive',
+        duration: 8000,
+      })
+    } finally {
+      setIsIdentifying(false)
     }
   }
 
@@ -347,7 +362,7 @@ export default function ItemForm({ item, onSuccess, onCancel }: ItemFormProps) {
             type="button"
             variant="ghost"
             size="sm"
-            onClick={handleGenerateDescription}
+            onClick={() => handleGenerateDescription()}
             disabled={isGeneratingDesc}
             className="h-7 text-xs gap-1.5 text-primary"
           >
