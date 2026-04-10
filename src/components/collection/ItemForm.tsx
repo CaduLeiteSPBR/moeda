@@ -88,9 +88,12 @@ export default function ItemForm({ item, onSuccess, onCancel }: ItemFormProps) {
       })
     } catch (err: unknown) {
       toast({
-        title: 'Não foi possível identificar',
-        description: err instanceof Error ? err.message : 'Tente preencher manualmente.',
+        title: 'Não foi possível identificar automaticamente',
+        description: err instanceof Error
+          ? err.message
+          : 'Tente com uma foto mais nítida ou preencha manualmente.',
         variant: 'destructive',
+        duration: 6000,
       })
     } finally {
       setIsIdentifying(false)

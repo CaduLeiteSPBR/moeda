@@ -76,72 +76,71 @@ ai.post('/identify', authMiddleware, async (c) => {
     // Busca imagem no R2
     const object = await c.env.R2.get(body.image_key)
     if (!object) {
-      return c.json({ error: 'Imagem não encontrada' }, 404)
+      return c.json({ error: 'Imagem não encontrada no armazenamento' }, 404)
     }
 
     const arrayBuffer = await object.arrayBuffer()
-    const contentType = object.httpMetadata?.contentType ?? 'image/jpeg'
 
-    // Converte para base64 em chunks para evitar stack overflow em arquivos grandes
-    const bytes = new Uint8Array(arrayBuffer)
-    let binary = ''
-    const chunkSize = 8192
-    for (let i = 0; i < bytes.length; i += chunkSize) {
-      binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize))
-    }
-    const base64 = btoa(binary)
+    // Cloudflare Workers AI (llama-3.2-11b-vision-instruct) espera
+    // a imagem como array de números no campo `image` (nível raiz),
+    // e o prompt como texto no campo `prompt` — não o formato OpenAI image_url.
+    const imageBytes = Array.from(new Uint8Array(arrayBuffer))
 
-    const prompt = `Você é um especialista em numismática. Analise esta imagem de uma moeda ou cédula e identifique os dados. Responda APENAS com JSON válido, sem markdown, sem texto extra, sem explicações:
-{"type":"coin ou note","country":"nome do país em português","year":número ou null,"denomination":valor numérico ou null,"currency":"código ISO da moeda (BRL/USD/EUR/GBP/ARS etc) ou null","commemorative_edition":"descrição da edição comemorativa se houver ou null"}`
+    const prompt = `You are a numismatic expert. Analyze this image of a coin or banknote and return ONLY a valid JSON object with no markdown, no extra text:
+{"type":"coin or note","country":"country name in Portuguese","year":number or null,"denomination":numeric value or null,"currency":"ISO currency code (BRL/USD/EUR/GBP/ARS etc) or null","commemorative_edition":"description if commemorative edition or null"}`
 
-    // Modelo de visão da Cloudflare Workers AI
-    const response = await (c.env.AI as unknown as {
+    // Formato correto para modelos de visão do Cloudflare Workers AI
+    const aiResponse = await (c.env.AI as unknown as {
       run: (model: string, input: unknown) => Promise<unknown>
     }).run('@cf/meta/llama-3.2-11b-vision-instruct', {
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'image_url',
-              image_url: { url: `data:${contentType};base64,${base64}` },
-            },
-            {
-              type: 'text',
-              text: prompt,
-            },
-          ],
-        },
-      ],
-      max_tokens: 256,
+      image: imageBytes,
+      prompt,
+      max_tokens: 300,
     })
 
-    const text = ((response as { response?: string }).response ?? '').trim()
+    const raw = ((aiResponse as { response?: string }).response ?? '').trim()
 
-    // Extrai JSON (o modelo às vezes adiciona texto antes/depois)
-    const jsonMatch = text.match(/\{[\s\S]*\}/)
+    console.log('[ai/identify] raw model response:', raw)
+
+    if (!raw) {
+      return c.json({
+        error: 'O modelo não retornou resposta. Tente com uma imagem mais nítida.',
+        debug_raw: raw,
+      }, 422)
+    }
+
+    // Extrai JSON — o modelo às vezes adiciona texto antes/depois
+    const jsonMatch = raw.match(/\{[\s\S]*?\}/)
     if (!jsonMatch) {
-      return c.json({ error: 'Não foi possível identificar o item na imagem' }, 422)
+      return c.json({
+        error: 'O modelo respondeu mas não no formato esperado. Preencha os campos manualmente.',
+        debug_raw: raw,
+      }, 422)
     }
 
     let data: Record<string, unknown>
     try {
       data = JSON.parse(jsonMatch[0]) as Record<string, unknown>
     } catch {
-      return c.json({ error: 'Resposta inválida do modelo de IA' }, 422)
+      return c.json({
+        error: 'Não foi possível interpretar a resposta do modelo.',
+        debug_raw: raw,
+      }, 422)
     }
 
     return c.json({
       type: (data.type as string) ?? null,
       country: (data.country as string) ?? null,
-      year: (data.year as number) ?? null,
-      denomination: (data.denomination as number) ?? null,
+      year: data.year ? Number(data.year) : null,
+      denomination: data.denomination ? Number(data.denomination) : null,
       currency: (data.currency as string) ?? null,
       commemorative_edition: (data.commemorative_edition as string) ?? null,
     })
   } catch (err) {
-    console.error('[ai/identify]', err)
-    return c.json({ error: 'Erro ao identificar item' }, 500)
+    console.error('[ai/identify] exception:', err)
+    return c.json({
+      error: `Erro interno: ${err instanceof Error ? err.message : String(err)}`,
+    }, 500)
   }
 })
 
