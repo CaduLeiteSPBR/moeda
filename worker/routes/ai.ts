@@ -76,7 +76,7 @@ ai.post('/describe', authMiddleware, async (c) => {
 
     const typeLabel = body.type === 'coin' ? 'Moeda' : 'Cédula'
     const isCommemorativa = body.commemorative_edition && body.commemorative_edition !== 'Não'
-    const prompt = `Você é um especialista em numismática com décadas de experiência. Escreva uma descrição completa e detalhada para catálogo de colecionadores sobre o item abaixo. Inclua: contexto histórico, características visuais típicas, curiosidades relevantes, e importância para colecionadores. Use 4 a 6 frases. Responda APENAS com a descrição, sem títulos ou prefixos.
+    const prompt = `Você é um especialista em numismática com décadas de experiência. Escreva uma descrição completa e detalhada para catálogo de colecionadores sobre o item abaixo. Inclua: contexto histórico, características visuais típicas, curiosidades relevantes, e importância para colecionadores. Escreva entre 4 e 6 frases completas, sempre terminando com ponto final. Não corte a descrição no meio. Responda APENAS com a descrição, sem títulos ou prefixos.
 
 Tipo: ${typeLabel}
 País: ${body.country}
@@ -84,7 +84,7 @@ Ano de emissão: ${body.year ?? 'Não informado'}
 Valor nominal: ${body.denomination ?? 'Não informado'} ${body.currency ?? ''}
 Edição comemorativa: ${isCommemorativa ? body.commemorative_edition : 'Não'}`
 
-    const description = await callGemini(c.env.GEMINI_API_KEY, [{ text: prompt }], { maxTokens: 512, temperature: 0.4 })
+    const description = await callGemini(c.env.GEMINI_API_KEY, [{ text: prompt }], { maxTokens: 1024, temperature: 0.4 })
 
     if (!description) {
       return c.json({ error: 'Não foi possível gerar uma descrição' }, 502)
