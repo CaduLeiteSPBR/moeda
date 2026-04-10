@@ -6,6 +6,7 @@ export type Env = {
   GOOGLE_CLIENT_ID: string
   GOOGLE_CLIENT_SECRET: string
   RESEND_API_KEY: string
+  GEMINI_API_KEY: string
   FRONTEND_URL: string
   GOOGLE_REDIRECT_URI: string
   ADMIN_EMAIL: string

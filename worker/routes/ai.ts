@@ -4,6 +4,40 @@ import type { AppContext } from '../types'
 
 const ai = new Hono<AppContext>()
 
+const GEMINI_MODEL = 'gemini-2.0-flash'
+const GEMINI_URL = (apiKey: string) =>
+  `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`
+
+// ─── Helper: chama a API do Gemini ────────────────────────────────────────────
+
+async function callGemini(
+  apiKey: string,
+  parts: Array<{ text: string } | { inline_data: { mime_type: string; data: string } }>,
+  maxTokens = 256,
+  temperature = 0.2,
+): Promise<string> {
+  const res = await fetch(GEMINI_URL(apiKey), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts }],
+      generationConfig: { maxOutputTokens: maxTokens, temperature },
+    }),
+  })
+
+  if (!res.ok) {
+    const err = await res.text()
+    throw new Error(`Gemini API error ${res.status}: ${err.slice(0, 200)}`)
+  }
+
+  const json = await res.json() as {
+    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
+  }
+
+  const text = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? ''
+  return text
+}
+
 // ─── POST /describe ───────────────────────────────────────────────────────────
 
 ai.post('/describe', authMiddleware, async (c) => {
@@ -21,36 +55,16 @@ ai.post('/describe', authMiddleware, async (c) => {
       return c.json({ error: 'type e country são obrigatórios' }, 400)
     }
 
-    const typeLabel = body.type === 'coin' ? 'Moeda' : body.type === 'note' ? 'Cédula' : body.type
-    const yearStr = body.year ? String(body.year) : 'Não informado'
-    const denominationStr = body.denomination ? String(body.denomination) : 'Não informado'
-    const currencyStr = body.currency ?? 'Não informado'
-    const editionStr = body.commemorative_edition ?? 'Não'
-
+    const typeLabel = body.type === 'coin' ? 'Moeda' : 'Cédula'
     const prompt = `Você é um especialista em numismática. Com base nas informações abaixo, escreva uma descrição breve (2-3 frases) e informativa sobre este item de coleção para um catálogo online. Seja factual e preciso. Responda APENAS com a descrição, sem prefixos ou introduções.
 
 Tipo: ${typeLabel}
 País: ${body.country}
-Ano: ${yearStr}
-Valor: ${denominationStr} ${currencyStr}
-Edição comemorativa: ${editionStr}`
+Ano: ${body.year ?? 'Não informado'}
+Valor: ${body.denomination ?? 'Não informado'} ${body.currency ?? ''}
+Edição comemorativa: ${body.commemorative_edition ?? 'Não'}`
 
-    // Usando Cloudflare Workers AI — gratuito, sem chave externa
-    const response = await c.env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
-      messages: [
-        {
-          role: 'system',
-          content: 'Você é um especialista em numismática. Responda sempre em português brasileiro. Seja conciso e factual.',
-        },
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
-      max_tokens: 200,
-    })
-
-    const description = (response as { response?: string }).response?.trim()
+    const description = await callGemini(c.env.GEMINI_API_KEY, [{ text: prompt }], 300, 0.4)
 
     if (!description) {
       return c.json({ error: 'Não foi possível gerar uma descrição' }, 502)
@@ -59,7 +73,7 @@ Edição comemorativa: ${editionStr}`
     return c.json({ description })
   } catch (err) {
     console.error('[ai/describe]', err)
-    return c.json({ error: 'Erro ao gerar descrição' }, 500)
+    return c.json({ error: err instanceof Error ? err.message : 'Erro ao gerar descrição' }, 500)
   }
 })
 
@@ -80,68 +94,43 @@ ai.post('/identify', authMiddleware, async (c) => {
     }
 
     const arrayBuffer = await object.arrayBuffer()
+    const contentType = object.httpMetadata?.contentType ?? 'image/jpeg'
 
-    // Cloudflare Workers AI (llama-3.2-11b-vision-instruct) espera
-    // a imagem como array de números no campo `image` (nível raiz),
-    // e o prompt como texto no campo `prompt` — não o formato OpenAI image_url.
-    const imageBytes = Array.from(new Uint8Array(arrayBuffer))
-
-    // ── Passo 1: LLaVA descreve a imagem em linguagem natural ────────────────
-    const visionResponse = await (c.env.AI as unknown as {
-      run: (model: string, input: unknown) => Promise<unknown>
-    }).run('@cf/llava-hf/llava-1.5-7b-hf', {
-      image: imageBytes,
-      prompt: 'Carefully examine this coin or banknote image. State: 1) Is it a coin or banknote? 2) What country issued it? 3) What is the EXACT denomination number printed on it (read carefully, e.g. 10, 20, 50, 100)? 4) What is the series year or print year visible? 5) What currency? 6) Any commemorative text? Be precise with numbers.',
-      max_tokens: 250,
-    })
-
-    const description = ((visionResponse as { description?: string; response?: string }).description
-      ?? (visionResponse as { response?: string }).response
-      ?? '').trim()
-
-    console.log('[ai/identify] vision description:', description)
-
-    if (!description) {
-      return c.json({
-        error: 'O modelo de visão não conseguiu descrever a imagem. Tente com uma foto mais nítida.',
-      }, 422)
+    // Converte para base64
+    const bytes = new Uint8Array(arrayBuffer)
+    let binary = ''
+    const chunkSize = 8192
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize))
     }
+    const base64 = btoa(binary)
 
-    // ── Passo 2: Llama extrai JSON estruturado da descrição ───────────────────
-    const extractResponse = await c.env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
-      messages: [
-        {
-          role: 'system',
-          content: 'Você é um especialista em numismática. Extraia dados estruturados de descrições de moedas e cédulas. Responda APENAS com JSON válido, sem markdown, sem texto extra.',
-        },
-        {
-          role: 'user',
-          content: `Com base nesta descrição de uma moeda ou cédula, extraia os dados com MUITA atenção aos números. Retorne APENAS um JSON válido:
-Descrição: "${description}"
+    const prompt = `Você é um especialista em numismática. Analise esta imagem de uma moeda ou cédula com muito cuidado.
 
-Regras importantes:
-- "denomination": use o número EXATO mencionado (ex: se disser "ten dollars" = 10, "twenty" = 20, nunca arredonde ou altere)
-- "year": use o ano da série/emissão mencionado (4 dígitos, ex: 2017)
-- "type": "coin" para moedas metálicas, "note" para cédulas/papel-moeda
-- "country": nome em português (ex: "Estados Unidos", "Brasil", "França")
-- "currency": código ISO de 3 letras (USD, BRL, EUR, GBP, etc.)
+Identifique e retorne APENAS um JSON válido, sem markdown, sem texto extra:
+{"type":"coin ou note","country":"nome do país em português","year":número do ano ou null,"denomination":valor numérico EXATO impresso (ex: se vir '10' retorne 10, se vir '50' retorne 50) ou null,"currency":"código ISO de 3 letras (BRL/USD/EUR/GBP/ARS/etc) ou null","commemorative_edition":"texto comemorativo se houver ou null"}
 
-JSON (null para campos não identificados):
-{"type":"coin ou note","country":"nome em português","year":número ou null,"denomination":número ou null,"currency":"código ISO ou null","commemorative_edition":"texto comemorativo ou null"}`,
-        },
+Atenção especial:
+- Leia o valor impresso com cuidado (não confunda 10 com 1, nem 100 com 10)
+- O ano deve ser o da emissão/série visível na nota ou moeda
+- Para cédulas americanas, a moeda é USD`
+
+    const raw = await callGemini(
+      c.env.GEMINI_API_KEY,
+      [
+        { inline_data: { mime_type: contentType, data: base64 } },
+        { text: prompt },
       ],
-      max_tokens: 200,
-    })
+      300,
+      0.1,
+    )
 
-    const raw = ((extractResponse as { response?: string }).response ?? '').trim()
+    console.log('[ai/identify] gemini raw:', raw)
 
-    console.log('[ai/identify] extraction raw:', raw)
-
-    // Extrai JSON da resposta (o modelo às vezes adiciona texto ao redor)
     const jsonMatch = raw.match(/\{[\s\S]*?\}/)
     if (!jsonMatch) {
       return c.json({
-        error: `Identificado como: "${description.substring(0, 120)}". Preencha os campos manualmente.`,
+        error: `Identificado como: "${raw.slice(0, 150)}". Preencha os campos manualmente.`,
       }, 422)
     }
 
@@ -150,7 +139,7 @@ JSON (null para campos não identificados):
       data = JSON.parse(jsonMatch[0]) as Record<string, unknown>
     } catch {
       return c.json({
-        error: `Identificado como: "${description.substring(0, 120)}". Preencha os campos manualmente.`,
+        error: `Identificado como: "${raw.slice(0, 150)}". Preencha os campos manualmente.`,
       }, 422)
     }
 
@@ -163,10 +152,8 @@ JSON (null para campos não identificados):
       commemorative_edition: (data.commemorative_edition as string) ?? null,
     })
   } catch (err) {
-    console.error('[ai/identify] exception:', err)
-    return c.json({
-      error: `Erro interno: ${err instanceof Error ? err.message : String(err)}`,
-    }, 500)
+    console.error('[ai/identify]', err)
+    return c.json({ error: err instanceof Error ? err.message : 'Erro ao identificar item' }, 500)
   }
 })
 
