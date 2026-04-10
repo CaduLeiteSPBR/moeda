@@ -35,6 +35,9 @@ export interface Item {
   back_image_url: string | null
   created_at: string | number
   updated_at?: string | number
+  owner_name?: string
+  owner_city?: string | null
+  owner_avatar_url?: string | null
   user?: User
   is_interested?: boolean
 }

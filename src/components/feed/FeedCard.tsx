@@ -73,20 +73,20 @@ export default function FeedCard({ item, index = 0 }: FeedCardProps) {
         </div>
 
         {/* Usuário */}
-        {item.user && (
+        {item.owner_name && (
           <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-border">
             <Avatar className="h-5 w-5">
-              <AvatarImage src={getImageUrl(item.user.avatar_url) ?? undefined} />
+              <AvatarImage src={getImageUrl(item.owner_avatar_url) ?? undefined} />
               <AvatarFallback className="text-[8px]">
-                {getInitials(item.user.name)}
+                {getInitials(item.owner_name)}
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-medium truncate">{item.user.name}</p>
-              {item.user.city && (
+              <p className="text-[11px] font-medium truncate">{item.owner_name}</p>
+              {item.owner_city && (
                 <p className="text-[10px] text-muted-foreground flex items-center gap-0.5 truncate">
                   <MapPin className="h-2.5 w-2.5 shrink-0" />
-                  {item.user.city}
+                  {item.owner_city}
                 </p>
               )}
             </div>
