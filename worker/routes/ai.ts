@@ -15,9 +15,9 @@ const GEMINI_URL = (model: string, apiKey: string) =>
 async function callGemini(
   apiKey: string,
   parts: Array<{ text: string } | { inline_data: { mime_type: string; data: string } }>,
-  maxTokens = 256,
-  temperature = 0.2,
+  options: { maxTokens?: number; temperature?: number; jsonMode?: boolean } = {},
 ): Promise<string> {
+  const { maxTokens = 512, temperature = 0.2, jsonMode = false } = options
   let lastError = ''
 
   for (const model of GEMINI_MODELS) {
@@ -26,11 +26,14 @@ async function callGemini(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts }],
-        generationConfig: { maxOutputTokens: maxTokens, temperature },
+        generationConfig: {
+          maxOutputTokens: maxTokens,
+          temperature,
+          ...(jsonMode ? { responseMimeType: 'application/json' } : {}),
+        },
       }),
     })
 
-    // 503 = sobrecarga temporária → tenta próximo modelo
     if (res.status === 503 || res.status === 429) {
       lastError = `Gemini API error ${res.status} on ${model}`
       console.warn(`[ai] ${lastError}, trying fallback...`)
@@ -47,7 +50,7 @@ async function callGemini(
     }
 
     const text = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? ''
-    console.log(`[ai] responded by ${model}`)
+    console.log(`[ai] model=${model} jsonMode=${jsonMode} chars=${text.length}`)
     return text
   }
 
@@ -81,7 +84,7 @@ Ano de emissão: ${body.year ?? 'Não informado'}
 Valor nominal: ${body.denomination ?? 'Não informado'} ${body.currency ?? ''}
 Edição comemorativa: ${isCommemorativa ? body.commemorative_edition : 'Não'}`
 
-    const description = await callGemini(c.env.GEMINI_API_KEY, [{ text: prompt }], 300, 0.4)
+    const description = await callGemini(c.env.GEMINI_API_KEY, [{ text: prompt }], { maxTokens: 512, temperature: 0.4 })
 
     if (!description) {
       return c.json({ error: 'Não foi possível gerar uma descrição' }, 502)
@@ -132,31 +135,24 @@ Atenção especial:
 - O ano deve ser o da emissão/série visível na nota ou moeda
 - Para cédulas americanas, a moeda é USD`
 
+    // JSON Mode garante resposta sempre em JSON válido — sem regex, sem falhas de parsing
     const raw = await callGemini(
       c.env.GEMINI_API_KEY,
       [
         { inline_data: { mime_type: contentType, data: base64 } },
         { text: prompt },
       ],
-      300,
-      0.1,
+      { maxTokens: 512, temperature: 0.1, jsonMode: true },
     )
 
     console.log('[ai/identify] gemini raw:', raw)
 
-    const jsonMatch = raw.match(/\{[\s\S]*?\}/)
-    if (!jsonMatch) {
-      return c.json({
-        error: `Identificado como: "${raw.slice(0, 150)}". Preencha os campos manualmente.`,
-      }, 422)
-    }
-
     let data: Record<string, unknown>
     try {
-      data = JSON.parse(jsonMatch[0]) as Record<string, unknown>
+      data = JSON.parse(raw) as Record<string, unknown>
     } catch {
       return c.json({
-        error: `Identificado como: "${raw.slice(0, 150)}". Preencha os campos manualmente.`,
+        error: `Não foi possível interpretar a resposta. Preencha os campos manualmente.`,
       }, 422)
     }
 
