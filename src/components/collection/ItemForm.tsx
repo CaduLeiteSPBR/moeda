@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Loader2, Sparkles } from 'lucide-react'
+import { Loader2, Sparkles, ScanSearch } from 'lucide-react'
 import { Item, ItemFormData, api } from '../../lib/api'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
@@ -55,11 +55,49 @@ export default function ItemForm({ item, onSuccess, onCancel }: ItemFormProps) {
     back_image_url: item?.back_image_url || null as string | null,
   })
   const [isLoading, setIsLoading] = useState(false)
+  const [isIdentifying, setIsIdentifying] = useState(false)
   const [isGeneratingDesc, setIsGeneratingDesc] = useState(false)
+  const [identified, setIdentified] = useState(false)
 
   const handleChange = (field: string, value: string | boolean | null) => {
     setForm((prev) => ({ ...prev, [field]: value }))
   }
+
+  // ─── Identificar item pela imagem ─────────────────────────────────────────
+
+  const handleIdentify = async () => {
+    if (!form.front_image_url) return
+    setIsIdentifying(true)
+    setIdentified(false)
+    try {
+      const result = await api.ai.identify(form.front_image_url)
+      setForm((prev) => ({
+        ...prev,
+        type: (result.type === 'coin' || result.type === 'note') ? result.type : prev.type,
+        country: result.country || prev.country,
+        year: result.year ? String(result.year) : prev.year,
+        denomination: result.denomination ? String(result.denomination) : prev.denomination,
+        currency: result.currency || prev.currency,
+        commemorative_edition: result.commemorative_edition || prev.commemorative_edition,
+      }))
+      setIdentified(true)
+      toast({
+        title: 'Item identificado!',
+        description: 'Revise e ajuste os campos se necessário.',
+        variant: 'default',
+      })
+    } catch (err: unknown) {
+      toast({
+        title: 'Não foi possível identificar',
+        description: err instanceof Error ? err.message : 'Tente preencher manualmente.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsIdentifying(false)
+    }
+  }
+
+  // ─── Gerar descrição com IA ───────────────────────────────────────────────
 
   const handleGenerateDescription = async () => {
     setIsGeneratingDesc(true)
@@ -83,6 +121,8 @@ export default function ItemForm({ item, onSuccess, onCancel }: ItemFormProps) {
       setIsGeneratingDesc(false)
     }
   }
+
+  // ─── Submeter formulário ──────────────────────────────────────────────────
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -127,7 +167,63 @@ export default function ItemForm({ item, onSuccess, onCancel }: ItemFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {/* Tipo */}
+
+      {/* ── 1. Imagens ─────────────────────────────────────────────────────── */}
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-3">
+          <ImageUpload
+            label="Frente *"
+            value={form.front_image_url}
+            onChange={(key) => {
+              handleChange('front_image_url', key)
+              if (!key) setIdentified(false)
+            }}
+          />
+          <ImageUpload
+            label="Verso"
+            value={form.back_image_url}
+            onChange={(key) => handleChange('back_image_url', key)}
+          />
+        </div>
+
+        {/* Botão Identificar com IA */}
+        <Button
+          type="button"
+          variant={identified ? 'secondary' : 'default'}
+          className="w-full gap-2"
+          onClick={handleIdentify}
+          disabled={!form.front_image_url || isIdentifying}
+        >
+          {isIdentifying ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <ScanSearch className="h-4 w-4" />
+          )}
+          {isIdentifying
+            ? 'Identificando...'
+            : identified
+            ? 'Identificado! Clique para re-identificar'
+            : 'Identificar com IA'}
+        </Button>
+
+        {!form.front_image_url && (
+          <p className="text-xs text-muted-foreground text-center">
+            Envie a foto da frente para usar a identificação automática
+          </p>
+        )}
+      </div>
+
+      {/* ── Divisor ────────────────────────────────────────────────────────── */}
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t border-border" />
+        </div>
+        <div className="relative flex justify-center text-xs">
+          <span className="bg-background px-2 text-muted-foreground">Informações do item</span>
+        </div>
+      </div>
+
+      {/* ── 2. Tipo ────────────────────────────────────────────────────────── */}
       <div className="space-y-1.5">
         <Label>Tipo *</Label>
         <Select
@@ -144,7 +240,7 @@ export default function ItemForm({ item, onSuccess, onCancel }: ItemFormProps) {
         </Select>
       </div>
 
-      {/* País */}
+      {/* ── 3. País ────────────────────────────────────────────────────────── */}
       <div className="space-y-1.5">
         <Label htmlFor="country">País *</Label>
         <Input
@@ -156,7 +252,7 @@ export default function ItemForm({ item, onSuccess, onCancel }: ItemFormProps) {
         />
       </div>
 
-      {/* Ano e Valor */}
+      {/* ── 4. Ano e Valor ─────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <Label htmlFor="year">Ano</Label>
@@ -183,7 +279,7 @@ export default function ItemForm({ item, onSuccess, onCancel }: ItemFormProps) {
         </div>
       </div>
 
-      {/* Moeda */}
+      {/* ── 5. Moeda ───────────────────────────────────────────────────────── */}
       <div className="space-y-1.5">
         <Label>Moeda</Label>
         <Select
@@ -203,7 +299,7 @@ export default function ItemForm({ item, onSuccess, onCancel }: ItemFormProps) {
         </Select>
       </div>
 
-      {/* Quantidade */}
+      {/* ── 6. Quantidade ──────────────────────────────────────────────────── */}
       <div className="space-y-1.5">
         <Label htmlFor="quantity">Quantidade</Label>
         <Input
@@ -215,7 +311,7 @@ export default function ItemForm({ item, onSuccess, onCancel }: ItemFormProps) {
         />
       </div>
 
-      {/* Edição comemorativa */}
+      {/* ── 7. Edição comemorativa ─────────────────────────────────────────── */}
       <div className="space-y-1.5">
         <Label htmlFor="commemorative">Edição Comemorativa</Label>
         <Input
@@ -226,7 +322,7 @@ export default function ItemForm({ item, onSuccess, onCancel }: ItemFormProps) {
         />
       </div>
 
-      {/* Disponível para troca */}
+      {/* ── 8. Disponível para troca ───────────────────────────────────────── */}
       <div className="flex items-center justify-between rounded-xl border border-border p-3">
         <div>
           <p className="text-sm font-medium">Disponível para troca</p>
@@ -238,7 +334,7 @@ export default function ItemForm({ item, onSuccess, onCancel }: ItemFormProps) {
         />
       </div>
 
-      {/* Descrição com IA */}
+      {/* ── 9. Descrição com IA ────────────────────────────────────────────── */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
           <Label htmlFor="description">Descrição</Label>
@@ -267,21 +363,7 @@ export default function ItemForm({ item, onSuccess, onCancel }: ItemFormProps) {
         />
       </div>
 
-      {/* Upload de imagens */}
-      <div className="grid grid-cols-2 gap-3">
-        <ImageUpload
-          label="Frente"
-          value={form.front_image_url}
-          onChange={(key) => handleChange('front_image_url', key)}
-        />
-        <ImageUpload
-          label="Verso"
-          value={form.back_image_url}
-          onChange={(key) => handleChange('back_image_url', key)}
-        />
-      </div>
-
-      {/* Ações */}
+      {/* ── Ações ──────────────────────────────────────────────────────────── */}
       <div className="flex gap-3 pt-2">
         <Button
           type="button"

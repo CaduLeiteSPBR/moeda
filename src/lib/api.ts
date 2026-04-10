@@ -349,6 +349,20 @@ export const api = {
         headers: authHeaders(),
         body: JSON.stringify(data),
       }).then(handleResponse<{ description: string }>),
+
+    identify: (image_key: string) =>
+      fetch(`${BASE_URL}/ai/identify`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ image_key }),
+      }).then(handleResponse<{
+        type: string | null
+        country: string | null
+        year: number | null
+        denomination: number | null
+        currency: string | null
+        commemorative_edition: string | null
+      }>),
   },
 
   admin: {
