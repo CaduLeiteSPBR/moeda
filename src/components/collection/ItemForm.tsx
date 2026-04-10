@@ -87,13 +87,14 @@ export default function ItemForm({ item, onSuccess, onCancel }: ItemFormProps) {
         variant: 'default',
       })
     } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : ''
+      // Se começa com "Identificado como:" o modelo viu a imagem mas não gerou JSON
+      const isPartial = msg.startsWith('Identificado como:')
       toast({
-        title: 'Não foi possível identificar automaticamente',
-        description: err instanceof Error
-          ? err.message
-          : 'Tente com uma foto mais nítida ou preencha manualmente.',
-        variant: 'destructive',
-        duration: 6000,
+        title: isPartial ? 'Identificação parcial' : 'Não foi possível identificar',
+        description: msg || 'Tente com uma foto mais nítida ou preencha manualmente.',
+        variant: isPartial ? 'default' : 'destructive',
+        duration: 8000,
       })
     } finally {
       setIsIdentifying(false)

@@ -86,35 +86,55 @@ ai.post('/identify', authMiddleware, async (c) => {
     // e o prompt como texto no campo `prompt` — não o formato OpenAI image_url.
     const imageBytes = Array.from(new Uint8Array(arrayBuffer))
 
-    const prompt = `You are a numismatic expert. Analyze this image of a coin or banknote and return ONLY a valid JSON object with no markdown, no extra text:
-{"type":"coin or note","country":"country name in Portuguese","year":number or null,"denomination":numeric value or null,"currency":"ISO currency code (BRL/USD/EUR/GBP/ARS etc) or null","commemorative_edition":"description if commemorative edition or null"}`
-
-    // Modelo de visão sem exigência de aceite de termos
-    const aiResponse = await (c.env.AI as unknown as {
+    // ── Passo 1: LLaVA descreve a imagem em linguagem natural ────────────────
+    const visionResponse = await (c.env.AI as unknown as {
       run: (model: string, input: unknown) => Promise<unknown>
     }).run('@cf/llava-hf/llava-1.5-7b-hf', {
       image: imageBytes,
-      prompt,
-      max_tokens: 300,
+      prompt: 'Describe this coin or banknote in detail. Include the country of origin, year, denomination value, currency name, and any commemorative text visible.',
+      max_tokens: 200,
     })
 
-    const raw = ((aiResponse as { response?: string }).response ?? '').trim()
+    const description = ((visionResponse as { description?: string; response?: string }).description
+      ?? (visionResponse as { response?: string }).response
+      ?? '').trim()
 
-    console.log('[ai/identify] raw model response:', raw)
+    console.log('[ai/identify] vision description:', description)
 
-    if (!raw) {
+    if (!description) {
       return c.json({
-        error: 'O modelo não retornou resposta. Tente com uma imagem mais nítida.',
-        debug_raw: raw,
+        error: 'O modelo de visão não conseguiu descrever a imagem. Tente com uma foto mais nítida.',
       }, 422)
     }
 
-    // Extrai JSON — o modelo às vezes adiciona texto antes/depois
+    // ── Passo 2: Llama extrai JSON estruturado da descrição ───────────────────
+    const extractResponse = await c.env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
+      messages: [
+        {
+          role: 'system',
+          content: 'Você é um especialista em numismática. Extraia dados estruturados de descrições de moedas e cédulas. Responda APENAS com JSON válido, sem markdown, sem texto extra.',
+        },
+        {
+          role: 'user',
+          content: `Com base nesta descrição de uma moeda ou cédula, retorne APENAS um JSON válido:
+Descrição: "${description}"
+
+JSON esperado (use null para campos não identificados):
+{"type":"coin ou note","country":"nome do país em português","year":número ou null,"denomination":número ou null,"currency":"código ISO (BRL/USD/EUR/GBP/ARS etc) ou null","commemorative_edition":"descrição da edição comemorativa ou null"}`,
+        },
+      ],
+      max_tokens: 200,
+    })
+
+    const raw = ((extractResponse as { response?: string }).response ?? '').trim()
+
+    console.log('[ai/identify] extraction raw:', raw)
+
+    // Extrai JSON da resposta (o modelo às vezes adiciona texto ao redor)
     const jsonMatch = raw.match(/\{[\s\S]*?\}/)
     if (!jsonMatch) {
       return c.json({
-        error: 'O modelo respondeu mas não no formato esperado. Preencha os campos manualmente.',
-        debug_raw: raw,
+        error: `Identificado como: "${description.substring(0, 120)}". Preencha os campos manualmente.`,
       }, 422)
     }
 
@@ -123,8 +143,7 @@ ai.post('/identify', authMiddleware, async (c) => {
       data = JSON.parse(jsonMatch[0]) as Record<string, unknown>
     } catch {
       return c.json({
-        error: 'Não foi possível interpretar a resposta do modelo.',
-        debug_raw: raw,
+        error: `Identificado como: "${description.substring(0, 120)}". Preencha os campos manualmente.`,
       }, 422)
     }
 
