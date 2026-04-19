@@ -174,41 +174,56 @@ export default function ItemDetail() {
       </div>
 
       {/* Informações do item */}
-      <div className="space-y-3">
+      <div className="space-y-4">
+
+        {/* Título */}
         <div>
           <h1 className="text-2xl font-bold">{item.country}</h1>
-          <div className="flex flex-wrap gap-2 mt-1">
-            {item.year && (
-              <span className="text-muted-foreground text-sm flex items-center gap-1">
-                <Calendar className="h-3.5 w-3.5" />
-                {item.year}
-              </span>
-            )}
-            {item.denomination && item.currency && (
-              <span className="text-muted-foreground text-sm font-medium">
-                {formatCurrency(item.denomination, item.currency)}
-              </span>
-            )}
+          <p className="text-sm text-muted-foreground mt-0.5">{getItemLabel(item.type)}</p>
+        </div>
+
+        {/* Edição comemorativa */}
+        {item.commemorative_edition && (
+          <div className="bg-primary/5 border border-primary/20 rounded-xl px-3 py-2">
+            <p className="text-xs text-primary/70 font-medium uppercase tracking-wide mb-0.5">Edição Comemorativa</p>
+            <p className="text-sm text-primary font-semibold">{item.commemorative_edition}</p>
+          </div>
+        )}
+
+        {/* Dados em grade */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-muted/50 rounded-xl p-3">
+            <p className="text-xs text-muted-foreground mb-1">Ano</p>
+            <p className="text-sm font-semibold">{item.year ?? '—'}</p>
+          </div>
+          <div className="bg-muted/50 rounded-xl p-3">
+            <p className="text-xs text-muted-foreground mb-1">Valor</p>
+            <p className="text-sm font-semibold">
+              {item.denomination && item.currency
+                ? formatCurrency(item.denomination, item.currency)
+                : '—'}
+            </p>
+          </div>
+          <div className="bg-muted/50 rounded-xl p-3">
+            <p className="text-xs text-muted-foreground mb-1">Quantidade</p>
+            <p className="text-sm font-semibold">{item.quantity}</p>
+          </div>
+          <div className="bg-muted/50 rounded-xl p-3">
+            <p className="text-xs text-muted-foreground mb-1">Disponível p/ troca</p>
+            <p className="text-sm font-semibold">{item.available_for_trade ? 'Sim' : 'Não'}</p>
           </div>
         </div>
 
-        {item.commemorative_edition && (
-          <div className="bg-primary/5 border border-primary/20 rounded-xl px-3 py-2">
-            <p className="text-sm text-primary font-medium">{item.commemorative_edition}</p>
-          </div>
-        )}
+        {/* Descrição */}
+        <div className="border border-border rounded-xl p-3">
+          <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-2">Descrição</p>
+          {item.description
+            ? <p className="text-sm text-foreground leading-relaxed">{item.description}</p>
+            : <p className="text-sm text-muted-foreground italic">Nenhuma descrição cadastrada.</p>
+          }
+        </div>
 
-        {item.quantity > 1 && (
-          <p className="text-sm text-muted-foreground">Quantidade: <strong>{item.quantity}</strong></p>
-        )}
-
-        {item.description && (
-          <div>
-            <p className="text-sm font-medium mb-1">Descrição</p>
-            <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
-          </div>
-        )}
-
+        {/* Data de adição */}
         {item.created_at && (
           <p className="text-xs text-muted-foreground">
             Adicionado em {formatDate(item.created_at)}
